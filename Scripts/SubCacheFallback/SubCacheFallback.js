@@ -1,22 +1,24 @@
 /**
- * 订阅 MITM：分析 + 缓存 + 403 device_limit 回退
- * 兼容：Loon（推荐）/ Quantumult X / Surge（响应改写）
+ * SubCacheFallback · 订阅缓存回退
+ * --------------------------------
+ * 官方名: SubCacheFallback
+ * 中文名: 订阅缓存回退
+ * 用途:   Clash/Loon 订阅响应 MITM — 成功缓存，403 device_limit 时回退
+ * 兼容:   Loon / Quantumult X / Surge
  *
  * 仓库: https://github.com/abbzbb/tools-scripts
- * 路径: sub-mitm/sub-mitm.js
- *
- * 默认匹配订阅域名 star.wag1719.top（可按需改 rewrite/plugin 与 CONFIG）
- *   200 → text/yaml（Clash）
- *   403 → subscription blocked: device_limit
+ * 路径: Scripts/SubCacheFallback/SubCacheFallback.js
  *
  * Loon:  http-response + requires-body=true
  * QX:    script-response-body
+ *
+ * 默认 hostname/URL 见 Loon/Plugin 与 QuantumultX/Rewrite，可按订阅改写。
  */
 
 // ===================== 可改配置 =====================
 const CONFIG = {
-  cacheKey: "sub_cache_star_wag1719",
-  metaKey: "sub_meta_star_wag1719",
+  cacheKey: "SubCacheFallback_body",
+  metaKey: "SubCacheFallback_meta",
   notifyOnSuccess: true,
   notifyOnFallback: true,
   logSampleNames: 5,
@@ -33,7 +35,7 @@ const isQuanX =
 const isSurge = typeof $httpClient !== "undefined" && typeof $loon === "undefined" && typeof $task === "undefined";
 
 function log(msg) {
-  console.log("[sub-mitm] " + msg);
+  console.log("[SubCacheFallback] " + msg);
 }
 
 function notify(title, subtitle, message) {
@@ -324,7 +326,7 @@ if (isDeviceLimit) {
       const when = (cached.meta && cached.meta.savedAt) || "未知时间";
       const cnt = (cached.meta && cached.meta.proxyCount) || "?";
       notify(
-        "订阅 403 已回退缓存",
+        "SubCacheFallback · 403 已回退缓存",
         "device_limit",
         "缓存节点约 " + cnt + " 个\n保存于 " + when
       );
@@ -334,7 +336,7 @@ if (isDeviceLimit) {
     log("403 且无本地缓存，原样返回");
     if (CONFIG.notifyOnFallback) {
       notify(
-        "订阅被拒绝",
+        "SubCacheFallback · 订阅被拒绝",
         "device_limit",
         "本地无可用缓存，请稍后再试或换设备额度"
       );
@@ -387,7 +389,7 @@ if (isDeviceLimit) {
 
     if (CONFIG.notifyOnSuccess) {
       notify(
-        "订阅已更新",
+        "SubCacheFallback · 订阅已更新",
         stats.proxyCount + " 个节点",
         "协议: " +
           topEntries(stats.types, 5) +
