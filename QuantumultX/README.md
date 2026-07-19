@@ -7,34 +7,90 @@
 
 ```text
 QuantumultX/
-├── README.md          # 本文件
-├── Rewrite/           # rewrite_local + mitm 片段
-└── Script/            # （可选）仅 QX 使用的脚本
+├── README.md
+├── Rewrite/           # 可「重写 → 引用」的纯规则文件
+└── Script/            # （可选）仅 QX 专用脚本
 ```
+
+## ⚠️ 导入报错 `invalid line <!DOCTYPE html>`
+
+说明 QX 读到的是 **HTML 网页**，不是规则文本。常见原因：
+
+| 错误做法 | 正确做法 |
+|----------|----------|
+| 用了 `https://github.com/.../blob/main/...` | 必须用 **raw** 地址 |
+| 把 README / 仓库首页当资源 | 用下面表格里的 raw |
+| raw 404 返回 GitHub 错误页 | 检查路径，或改用 jsDelivr |
+
+**请只用 raw / CDN，不要用浏览器里复制的 github.com 页面链接。**
+
+---
 
 ## 已收录重写
 
-| 项目名 | 中文名 | 重写文件 | 共享脚本 |
-|--------|--------|----------|----------|
-| **SubCacheFallback** | 订阅缓存回退 | [Rewrite/SubCacheFallback.conf](./Rewrite/SubCacheFallback.conf) | [Scripts/…](../Scripts/SubCacheFallback/SubCacheFallback.js) |
+| 项目名 | 中文名 | 远程引用（raw） |
+|--------|--------|-----------------|
+| **SubCacheFallback** | 订阅缓存回退 | 见下方 |
 
-### 安装 SubCacheFallback
+### SubCacheFallback 安装（推荐：重写引用）
 
-1. 安装并信任 MitM 证书  
-2. 合并 [Rewrite/SubCacheFallback.conf](./Rewrite/SubCacheFallback.conf) 到配置  
-3. 打开 **MitM**、**重写**  
-4. 日志搜索 `[SubCacheFallback]`
+**1. 重写资源 URL（复制这一行）：**
 
-脚本 raw：
+```text
+https://raw.githubusercontent.com/abbzbb/tools-scripts/main/QuantumultX/Rewrite/SubCacheFallback.conf
+```
+
+备用 CDN：
+
+```text
+https://cdn.jsdelivr.net/gh/abbzbb/tools-scripts@main/QuantumultX/Rewrite/SubCacheFallback.conf
+```
+
+**2. 操作步骤**
+
+1. Quantumult X → 风车 → **重写**  
+2. 右上角 **⋯ / 引用** → 添加资源  
+3. 粘贴上面的 **raw** 地址（不要用 github.com/blob）  
+4. 标签可填：`SubCacheFallback`  
+5. 保存并启用  
+6. 打开 **MitM**、**重写**；证书已信任  
+
+**3. 脚本本身也会由规则自动拉取：**
 
 ```text
 https://raw.githubusercontent.com/abbzbb/tools-scripts/main/Scripts/SubCacheFallback/SubCacheFallback.js
 ```
 
+**4. 验证**
+
+更新订阅（流量走 QX）后，日志搜索：`[SubCacheFallback]`
+
+---
+
+### 手动合并进配置文件（不用引用时）
+
+编辑配置，在已有段落中**追加**（不要重复写多个 `[mitm]` 标题）：
+
+```ini
+[rewrite_local]
+^https://star\.wag1719\.top/u/.+ url script-response-body https://raw.githubusercontent.com/abbzbb/tools-scripts/main/Scripts/SubCacheFallback/SubCacheFallback.js
+
+[mitm]
+hostname = star.wag1719.top
+```
+
+若已有 `hostname = a.com, b.com`，只追加域名：
+
+```ini
+hostname = a.com, b.com, star.wag1719.top
+```
+
+> 远程 `.conf` 文件**不要**写 `[rewrite_local]` / `[mitm]` 方括号段名，QX 引用资源只认「规则行 + hostname =」。
+
 项目文档：[Scripts/SubCacheFallback/README.md](../Scripts/SubCacheFallback/README.md)
 
 ## 新增 QX 脚本时
 
-1. `Scripts/<NewName>/` 写 JS（或放 `QuantumultX/Script/` 若仅 QX）  
-2. `QuantumultX/Rewrite/<NewName>.conf` 写规则  
-3. 更新本表与根 `README.md` Catalog  
+1. `Scripts/<NewName>/` 写 JS  
+2. `QuantumultX/Rewrite/<NewName>.conf` 写**纯规则**（可含 `hostname =`，无方括号段）  
+3. 更新根 README Catalog，并在文档里只提供 **raw** 链接  

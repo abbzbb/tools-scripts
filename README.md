@@ -67,15 +67,19 @@ https://raw.githubusercontent.com/abbzbb/tools-scripts/main/Loon/Plugin/SubCache
 
 ### Quantumult X · SubCacheFallback
 
+**重写引用（必须用 raw，不要用 github.com/blob 网页）：**
+
+```text
+https://raw.githubusercontent.com/abbzbb/tools-scripts/main/QuantumultX/Rewrite/SubCacheFallback.conf
+```
+
 脚本 raw：
 
 ```text
 https://raw.githubusercontent.com/abbzbb/tools-scripts/main/Scripts/SubCacheFallback/SubCacheFallback.js
 ```
 
-重写片段：[QuantumultX/Rewrite/SubCacheFallback.conf](./QuantumultX/Rewrite/SubCacheFallback.conf)
-
-说明：[QuantumultX/README.md](./QuantumultX/README.md)
+若提示 `invalid line <!DOCTYPE html>`：说明导入了 HTML 页面，请改用上面 raw 地址。详见 [QuantumultX/README.md](./QuantumultX/README.md)。
 
 ### 备用 CDN（jsDelivr）
 

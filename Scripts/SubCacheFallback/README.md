@@ -14,6 +14,14 @@
 2. 返回 **403** 且含 `device_limit`：有缓存则伪造 **200** 回退  
 3. 可选按地区过滤（`CONFIG.enableFilter`）
 
+## Quantumult X 引用地址（重要）
+
+```text
+https://raw.githubusercontent.com/abbzbb/tools-scripts/main/QuantumultX/Rewrite/SubCacheFallback.conf
+```
+
+> 不要使用 `https://github.com/.../blob/...` 网页链接，否则会报 `invalid line <!DOCTYPE html>`。
+
 ## 客户端入口
 
 | 客户端 | 入口 |
