@@ -1,0 +1,11 @@
+#!name=订阅 MITM 缓存回退
+#!desc=分析 Clash 订阅 YAML、成功时本地缓存；遇 403 device_limit 时回退缓存。
+#!author=abbzbb
+#!homepage=https://github.com/abbzbb/tools-scripts
+#!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Rocket.png
+
+[Script]
+http-response ^https://star\.wag1719\.top/u/.+ script-path=https://raw.githubusercontent.com/abbzbb/tools-scripts/main/sub-mitm/sub-mitm.js, requires-body=true, timeout=60, tag=Sub-MITM-Cache
+
+[MITM]
+hostname = star.wag1719.top

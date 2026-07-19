@@ -1,0 +1,35 @@
+mixed-port: 7890
+mode: rule
+proxies:
+- name: 🇹🇼 TW|88|M100ms|1.1.1.1|YT|vless
+  type: vless
+  server: 127.0.0.1
+  port: 443
+  uuid: 00000000-0000-0000-0000-000000000001
+  tls: true
+  network: ws
+- name: 🇯🇵 JP|80|M200ms|2.2.2.2|YT|trojan
+  type: trojan
+  server: 127.0.0.1
+  port: 443
+  password: demo-password
+- name: 🇺🇸 US|70|M300ms|3.3.3.3|YT|http
+  type: http
+  server: 127.0.0.1
+  port: 8080
+- name: 🇭🇰 HK|60|M150ms|4.4.4.4|YT|ss
+  type: ss
+  server: 127.0.0.1
+  port: 8388
+  cipher: aes-128-gcm
+  password: demo
+proxy-groups:
+- name: PROXY
+  type: select
+  proxies:
+  - 🇹🇼 TW|88|M100ms|1.1.1.1|YT|vless
+  - 🇯🇵 JP|80|M200ms|2.2.2.2|YT|trojan
+  - 🇺🇸 US|70|M300ms|3.3.3.3|YT|http
+  - 🇭🇰 HK|60|M150ms|4.4.4.4|YT|ss
+rules:
+- MATCH,PROXY
