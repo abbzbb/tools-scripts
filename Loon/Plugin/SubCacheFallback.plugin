@@ -1,10 +1,11 @@
 #!name=SubCacheFallback · 订阅缓存回退
-#!desc=【SubCacheFallback】分析 Clash 订阅 YAML、成功时本地缓存；403 device_limit 时回退缓存。
+#!desc=【SubCacheFallback】请求改 Safari UA（避免 device_limit 403）；响应缓存；403 时回退。
 #!author=abbzbb
 #!homepage=https://github.com/abbzbb/tools-scripts
 #!icon=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Rocket.png
 
 [Script]
+http-request ^https://star\.wag1719\.top/u/.+ script-path=https://raw.githubusercontent.com/abbzbb/tools-scripts/main/Scripts/SubCacheFallback/SubCacheFallback.js, timeout=30, tag=SubCacheFallback-Req
 http-response ^https://star\.wag1719\.top/u/.+ script-path=https://raw.githubusercontent.com/abbzbb/tools-scripts/main/Scripts/SubCacheFallback/SubCacheFallback.js, requires-body=true, timeout=60, tag=SubCacheFallback
 
 [MITM]

@@ -49,7 +49,7 @@ tools-scripts/
 
 | 项目名 | 中文名 | 功能摘要 | Loon | Quantumult X | 共享脚本 |
 |--------|--------|----------|------|--------------|----------|
-| **SubCacheFallback** | 订阅缓存回退 | 订阅 YAML 分析/缓存；403 `device_limit` 时回退本地缓存 | [Plugin](./Loon/Plugin/SubCacheFallback.plugin) | [Rewrite](./QuantumultX/Rewrite/SubCacheFallback.conf) | [JS](./Scripts/SubCacheFallback/SubCacheFallback.js) |
+| **SubCacheFallback** | 订阅缓存回退 | 请求改 Safari UA（修 403 device_limit）；YAML 缓存；403 回退 | [Plugin](./Loon/Plugin/SubCacheFallback.plugin) | [Rewrite](./QuantumultX/Rewrite/SubCacheFallback.conf) | [JS](./Scripts/SubCacheFallback/SubCacheFallback.js) |
 
 ---
 

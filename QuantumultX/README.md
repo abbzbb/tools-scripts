@@ -34,6 +34,16 @@ QuantumultX/
 
 ### SubCacheFallback 安装（推荐：重写引用）
 
+> **403 修复说明（已实测）**  
+> 机场对 Loon/QX/Clash 的 `User-Agent` 返回 `device_limit`；对 Safari UA 返回 200。  
+> 当前规则含 **script-request-header**（改成 Safari UA）+ **script-response-body**（缓存）。  
+> 更新订阅时请打开 MitM/重写，否则改 UA 不生效。  
+>
+> **QX 节点订阅请用：**  
+> `https://star.wag1719.top/u/<token>?client=qx`  
+> （`client=loon` 是 Clash YAML；`client=qx` 才是 QX 可用的 base64 节点列表。）  
+> 频繁刷新可能触发 `rate_limited`，稍后再试。
+
 **1. 重写资源 URL（复制这一行）：**
 
 ```text

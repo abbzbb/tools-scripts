@@ -3,16 +3,19 @@
  * --------------------------------
  * 官方名: SubCacheFallback
  * 中文名: 订阅缓存回退
- * 用途:   Clash/Loon 订阅响应 MITM — 成功缓存，403 device_limit 时回退
  * 兼容:   Loon / Quantumult X / Surge
  *
  * 仓库: https://github.com/abbzbb/tools-scripts
  * 路径: Scripts/SubCacheFallback/SubCacheFallback.js
  *
- * Loon:  http-response + requires-body=true
- * QX:    script-response-body
+ * 实际测得（star.wag1719.top）：
+ *   - User-Agent 为 Loon / Quantumult X / Clash / curl → 403 device_limit
+ *   - User-Agent 为 Safari（浏览器）→ 200 + Clash YAML
+ * 故请求阶段会把 UA 改成 Safari，避免被机场按「客户端设备」计数拦截。
  *
- * 默认 hostname/URL 见 Loon/Plugin 与 QuantumultX/Rewrite，可按订阅改写。
+ * 用法：
+ *   Loon:  http-request + http-response（同一脚本）
+ *   QX:    script-request-header + script-response-body（同一脚本）
  */
 
 // ===================== 可改配置 =====================
@@ -25,6 +28,13 @@ const CONFIG = {
   enableFilter: false,
   keepRegions: ["TW", "JP", "HK"],
   cleanProxyGroups: true,
+
+  // 实测可拿到 200 的浏览器 UA（勿改成 Loon/QX/Clash，会 403）
+  browserUA:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+
+  // 请求阶段是否强制改 UA
+  rewriteUserAgent: true,
 };
 
 // ===================== 环境适配 =====================
@@ -32,7 +42,10 @@ const isLoon = typeof $loon !== "undefined";
 const isQuanX =
   typeof $task !== "undefined" ||
   (typeof $prefs !== "undefined" && typeof $loon === "undefined");
-const isSurge = typeof $httpClient !== "undefined" && typeof $loon === "undefined" && typeof $task === "undefined";
+const isSurge =
+  typeof $httpClient !== "undefined" &&
+  typeof $loon === "undefined" &&
+  typeof $task === "undefined";
 
 function log(msg) {
   console.log("[SubCacheFallback] " + msg);
@@ -41,10 +54,8 @@ function log(msg) {
 function notify(title, subtitle, message) {
   try {
     if (typeof $notify === "function") {
-      // Quantumult X
       $notify(title, subtitle || "", message || "");
     } else if (typeof $notification !== "undefined" && $notification.post) {
-      // Loon / Surge
       $notification.post(title, subtitle || "", message || "");
     }
   } catch (e) {
@@ -88,7 +99,6 @@ function statusCodeOf(resp) {
   if (typeof resp.statusCode !== "undefined" && resp.statusCode !== null) {
     return Number(resp.statusCode);
   }
-  // Loon / Surge 常用 $response.status 为数字
   if (typeof resp.status !== "undefined" && resp.status !== null) {
     if (typeof resp.status === "number") return resp.status;
     const m = String(resp.status).match(/(\d{3})/);
@@ -97,26 +107,22 @@ function statusCodeOf(resp) {
   return 0;
 }
 
-/** 原样放行 */
 function donePass() {
   $done({});
 }
 
-/** 只改 body */
 function doneBody(body) {
   $done({ body: body });
 }
 
-/**
- * 403 回退：伪造 200 + YAML
- * Loon/Surge: $done({ response: { status, headers, body } })
- * QX:         $done({ status: "HTTP/1.1 200 OK", headers, body })
- */
+function doneHeaders(headers) {
+  $done({ headers: headers });
+}
+
 function doneFake200(body) {
   const headers = {
     "Content-Type": "text/yaml; charset=utf-8",
   };
-  // 尽量保留原响应头（去掉长度/编码，交给客户端重算）
   try {
     const src = ($response && $response.headers) || {};
     for (const k in src) {
@@ -144,7 +150,6 @@ function doneFake200(body) {
     });
     return;
   }
-  // Quantumult X
   $done({
     status: "HTTP/1.1 200 OK",
     headers: headers,
@@ -152,7 +157,30 @@ function doneFake200(body) {
   });
 }
 
-// ===================== 业务工具 =====================
+function setHeader(headers, name, value) {
+  const lower = name.toLowerCase();
+  const keys = Object.keys(headers || {});
+  for (let i = 0; i < keys.length; i++) {
+    if (String(keys[i]).toLowerCase() === lower) {
+      delete headers[keys[i]];
+    }
+  }
+  headers[name] = value;
+  return headers;
+}
+
+function getHeader(headers, name) {
+  const lower = name.toLowerCase();
+  const keys = Object.keys(headers || {});
+  for (let i = 0; i < keys.length; i++) {
+    if (String(keys[i]).toLowerCase() === lower) {
+      return headers[keys[i]];
+    }
+  }
+  return null;
+}
+
+// ===================== 业务：YAML 分析 / 过滤 =====================
 function analyzeClashYaml(body) {
   const result = {
     proxyCount: 0,
@@ -301,49 +329,81 @@ function loadCache() {
   return { body: body, meta: meta };
 }
 
-// ===================== 主逻辑 =====================
-const url = ($request && $request.url) || "";
-const code = statusCodeOf($response);
-const body = ($response && $response.body) || "";
+// ===================== 请求阶段：改 UA（解决 403） =====================
+function handleRequest() {
+  const url = ($request && $request.url) || "";
+  let headers = Object.assign({}, ($request && $request.headers) || {});
 
-log(
-  "env=" +
-    (isLoon ? "Loon" : isQuanX ? "QuanX" : isSurge ? "Surge" : "unknown")
-);
-log("URL=" + url);
-log("statusCode=" + code + " bodyLen=" + (body ? body.length : 0));
+  log(
+    "env=" +
+      (isLoon ? "Loon" : isQuanX ? "QuanX" : isSurge ? "Surge" : "unknown") +
+      " phase=request"
+  );
+  log("URL=" + url);
 
-const isDeviceLimit =
-  code === 403 ||
-  (typeof body === "string" && body.indexOf("device_limit") >= 0) ||
-  (typeof body === "string" && body.indexOf("subscription blocked") >= 0);
-
-if (isDeviceLimit) {
-  const cached = loadCache();
-  if (cached.body && cached.body.length > 0) {
-    log("403 device_limit，使用本地缓存回退，cacheLen=" + cached.body.length);
-    if (CONFIG.notifyOnFallback) {
-      const when = (cached.meta && cached.meta.savedAt) || "未知时间";
-      const cnt = (cached.meta && cached.meta.proxyCount) || "?";
-      notify(
-        "SubCacheFallback · 403 已回退缓存",
-        "device_limit",
-        "缓存节点约 " + cnt + " 个\n保存于 " + when
-      );
-    }
-    doneFake200(cached.body);
-  } else {
-    log("403 且无本地缓存，原样返回");
-    if (CONFIG.notifyOnFallback) {
-      notify(
-        "SubCacheFallback · 订阅被拒绝",
-        "device_limit",
-        "本地无可用缓存，请稍后再试或换设备额度"
-      );
-    }
+  if (!CONFIG.rewriteUserAgent) {
+    log("rewriteUserAgent=false，跳过改 UA");
     donePass();
+    return;
   }
-} else {
+
+  const oldUA = getHeader(headers, "User-Agent") || "";
+  setHeader(headers, "User-Agent", CONFIG.browserUA);
+  log("UA: " + String(oldUA).slice(0, 48) + " → Safari(browser)");
+  doneHeaders(headers);
+}
+
+// ===================== 响应阶段：缓存 / 403 回退 =====================
+function handleResponse() {
+  const url = ($request && $request.url) || "";
+  const code = statusCodeOf($response);
+  const body = ($response && $response.body) || "";
+
+  log(
+    "env=" +
+      (isLoon ? "Loon" : isQuanX ? "QuanX" : isSurge ? "Surge" : "unknown") +
+      " phase=response"
+  );
+  log("URL=" + url);
+  log("statusCode=" + code + " bodyLen=" + (body ? body.length : 0));
+
+  const isDeviceLimit =
+    code === 403 ||
+    (typeof body === "string" && body.indexOf("device_limit") >= 0) ||
+    (typeof body === "string" && body.indexOf("subscription blocked") >= 0);
+
+  if (isDeviceLimit) {
+    const cached = loadCache();
+    if (cached.body && cached.body.length > 0) {
+      log("403 device_limit，使用本地缓存回退，cacheLen=" + cached.body.length);
+      if (CONFIG.notifyOnFallback) {
+        const when = (cached.meta && cached.meta.savedAt) || "未知时间";
+        const cnt = (cached.meta && cached.meta.proxyCount) || "?";
+        notify(
+          "SubCacheFallback · 403 已回退缓存",
+          "device_limit",
+          "缓存节点约 " +
+            cnt +
+            " 个\n保存于 " +
+            when +
+            "\n提示: 请确认已启用「请求改 UA」规则"
+        );
+      }
+      doneFake200(cached.body);
+    } else {
+      log("403 且无本地缓存");
+      if (CONFIG.notifyOnFallback) {
+        notify(
+          "SubCacheFallback · 订阅被拒绝",
+          "device_limit",
+          "机场把 Loon/QX/Clash 的 UA 算作设备。\n请启用脚本的「请求阶段改 UA」，或先用浏览器 UA 拉取一次。"
+        );
+      }
+      donePass();
+    }
+    return;
+  }
+
   const looksLikeYaml =
     typeof body === "string" &&
     (body.indexOf("proxies:") >= 0 || body.indexOf("\nproxies:") >= 0);
@@ -410,4 +470,11 @@ if (isDeviceLimit) {
     );
     donePass();
   }
+}
+
+// ===================== 入口：请求 or 响应 =====================
+if (typeof $response !== "undefined" && $response !== null) {
+  handleResponse();
+} else {
+  handleRequest();
 }
